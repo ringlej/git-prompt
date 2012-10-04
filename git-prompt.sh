@@ -27,6 +27,8 @@
         cwd_cmd=${cwd_cmd:-\\w}
         head_separator=${head_separator:- }
         file_list_mode=${file_list_mode:-topdir}
+        cwd_remember=${cwd_remember:-off}
+        cwd_show_last_files=${cwd_show_last_files:-off}
 
         #### dir, rc, root color
         cols=`tput colors`                              # in emacs shell-mode tput colors returns -1
@@ -150,6 +152,11 @@
                 PS1="\w$prompt_char "
                 return 0
         fi
+
+        #######  based on: http://matt.might.net/articles/console-hacks-exploiting-frequency/
+        #######  Change to most recently used directory
+
+        [[ $cwd_remember = "on" && -f "${HOME}/.lastdir" ]] && cd $(cat ${HOME}/.lastdir)
 
         ####################################################################  MARKERS
         if [[ "$LC_CTYPE $LC_ALL" =~ "UTF" && $TERM != "linux" ]];  then
@@ -701,7 +708,7 @@ declare -ft enable_set_shell_label
 #      END  { for (i=NR;i>0;i--)
 #             print line[i] }' listlogs
 
-j (){
+j() {
         : ${1? usage: j dir-beginning}
         # go in ring buffer starting from current index.  cd to first matching dir
         for (( i=(aj_idx-1)%aj_max;   i != aj_idx%aj_max;  i=(--i+aj_max)%aj_max )) ; do
@@ -715,6 +722,30 @@ j (){
 
 alias jumpstart='echo ${aj_dir_list[@]}'
 
+show_last_files() {
+	# idea from http://matt.might.net/articles/console-hacks-exploiting-frequency/
+
+	local size=$(stty size)
+	local cols=${size#* }
+	local regexp="^(\[[0-9;]*m)(.*)(\[[0-9;]*m)$"	# FIXME: \033 and \x1b didn't work
+	local ls=$(ls -t --color=always | head -20)
+	local len=0
+	typeset -i len
+	local line
+	for line in $ls; do
+		local exp31='[[ "$line" =~ $regexp ]]'
+		if eval $exp31; then
+			local filename=${BASH_REMATCH[2]}
+			[ $(($len + ${#filename})) -ge "$cols" ] && break
+			echo -n " ${BASH_REMATCH[1]}$filename${BASH_REMATCH[3]}"
+			len+=${#filename}
+			len+=1
+		fi
+	done
+	tput sgr0
+	echo
+}
+
 ###################################################################### PROMPT_COMMAND
 
 prompt_command_function() {
@@ -725,6 +756,10 @@ prompt_command_function() {
         else
                 rc="$rc_color$rc$colors_reset$bell "
         fi
+
+        [[ $cwd_remember == "on" && "$PWD" != "$LASTDIR" ]] && echo $PWD > ~/.lastdir
+        [[ $cwd_show_last_files == "on" && "$PWD" != "$LASTDIR" ]] && show_last_files
+        [[ "$PWD" != "$LASTDIR" ]] && export LASTDIR="$PWD"
 
         cwd=${PWD/$HOME/\~}                     # substitute  "~"
         set_shell_label "${cwd##[/~]*/}/"       # default label - path last dir
