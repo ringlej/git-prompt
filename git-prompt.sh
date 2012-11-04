@@ -724,7 +724,6 @@ alias jumpstart='echo ${aj_dir_list[@]}'
 
 show_last_files() {
 	# idea from http://matt.might.net/articles/console-hacks-exploiting-frequency/
-
 	local size=$(stty size)
 	local cols=${size#* }
 	local regexp="^(\[[0-9;]*m)(.*)(\[[0-9;]*m)$"	# FIXME: \033 and \x1b didn't work
@@ -732,15 +731,20 @@ show_last_files() {
 	local len=0
 	typeset -i len
 	local line
+    local filename
 	for line in $ls; do
 		local exp31='[[ "$line" =~ $regexp ]]'
 		if eval $exp31; then
-			local filename=${BASH_REMATCH[2]}
+			filename=${BASH_REMATCH[2]}
 			[ $(($len + ${#filename})) -ge "$cols" ] && break
 			echo -n " ${BASH_REMATCH[1]}$filename${BASH_REMATCH[3]}"
-			len+=${#filename}
-			len+=1
+        else
+            filename=$line
+			[ $(($len + ${#filename})) -ge "$cols" ] && break
+            echo -n " $filename"
 		fi
+		len+=${#filename}
+		len+=1
 	done
 	tput sgr0
 	echo
