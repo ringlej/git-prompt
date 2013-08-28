@@ -38,6 +38,7 @@
                 virtualenv_color=${virtualenv_color:-green}
                 user_id_color=${user_id_color:-blue}
                 root_id_color=${root_id_color:-magenta}
+                history_color=${history_color:-YELLOW}
         else                                            #  only B/W
                 dir_color=${dir_color:-bw_bold}
                 rc_color=${rc_color:-bw_bold}
@@ -66,6 +67,7 @@
         upcase_hostname=${upcase_hostname:-on}
         count_only=${count_only:-off}
         rawhex_len=${rawhex_len:-5}
+        history_enable=${history_enable:-off}
 
         aj_max=20
 
@@ -295,6 +297,7 @@ set_shell_label() {
         virtualenv_color=${!virtualenv_color}
         user_id_color=${!user_id_color}
         root_id_color=${!root_id_color}
+        history_color=${!history_color}
 
         ########################################################### HOST
         ### we don't display home host/domain  $SSH_* set by SSHD or keychain
@@ -666,7 +669,6 @@ parse_vcs_status() {
                 fi
         fi
 
-
         head_local="$vcs_color(${vcs_info}$vcs_color${file_list}$vcs_color)$head_separator"
 
         ### fringes
@@ -770,6 +772,11 @@ prompt_command_function() {
 
         parse_virtualenv_status
         parse_vcs_status
+
+        if [[ "${history_enable}" = "on" ]] ; then
+            history_num=" $dir_color{${history_color}\!$dir_color}"
+        fi
+        tail_local="${tail_local+$dir_color $tail_local}${history_num}${dir_color}"
 
         # autojump
         if [[ ${aj_dir_list[aj_idx%aj_max]} != $PWD ]] ; then
